@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: sheep
+spec:
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: sheep
+  template:
+    metadata:
+      labels:
+        app: sheep
+    spec:
+      nodeSelector:
+        sheepdog: ""
+      hostNetwork: true
+      initcontainers:
+
+      initContainers:
+      - name: install-dog
+        image: "kvaps/sheepdog"
+        command:
+        - cp
+        args:
+        - -f
+        - /usr/bin/dog
+        - /host-bin/dog
+        volumeMounts:
+        - name: usr-bin
+          mountPath: /host-bin
+      containers:
+      - name: sheep
+        imagePullPolicy: Always
+        image: "kvaps/sheepdog"
+        command:
+        - /usr/sbin/sheep
+        - --foreground
+        - --cluster=zookeeper:10.103.206.43:2181
+        - --nosync
+        - /var/lib/sheepdog
+        volumeMounts:
+        - name: datadir
+          mountPath: /var/lib/sheepdog
+      #securityContext:
+      #  runAsUser: 1000
+      #  fsGroup: 1000
+
+      volumes:
+      - name: datadir
+        hostPath:
+          path: "/data/local/data/sheepdog"
+      - name: usr-bin
+        hostPath:
+          path: "/usr/bin"
