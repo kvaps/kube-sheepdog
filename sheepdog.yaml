@@ -37,7 +37,7 @@ spec:
         command:
         - /usr/sbin/sheep
         - --foreground
-        - --cluster=zookeeper:10.103.206.43:2181
+        - --cluster=zookeeper:192.168.100.1:2181,192.168.100.2:2181,192.168.100.3:2181
         - --nosync
         - /var/lib/sheepdog
         volumeMounts:

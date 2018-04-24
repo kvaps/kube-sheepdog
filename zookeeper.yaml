@@ -1,52 +1,11 @@
-#https://raw.githubusercontent.com/kow3ns/kubernetes-zookeeper/master/manifests/zookeeper.yaml
----
-apiVersion: v1
-kind: Service
+apiVersion: apps/v1
+kind: DaemonSet
 metadata:
-  name: zk-hs
-  labels:
-    app: zk
-spec:
-  ports:
-  - port: 2888
-    name: server
-  - port: 3888
-    name: leader-election
-  clusterIP: None
-  selector:
-    app: zk
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: zk-cs
-  labels:
-    app: zk
-spec:
-  ports:
-  - port: 2181
-    name: client
-  selector:
-    app: zk
----
-apiVersion: policy/v1beta1
-kind: PodDisruptionBudget
-metadata:
-  name: zk-pdb
+  name: zk
 spec:
   selector:
     matchLabels:
       app: zk
-  maxUnavailable: 1
----
-apiVersion: apps/v1beta1
-kind: StatefulSet
-metadata:
-  name: zk
-spec:
-  serviceName: zk-hs
-  replicas: 3
-  podManagementPolicy: Parallel
   updateStrategy:
     type: RollingUpdate
   template:
@@ -54,36 +13,30 @@ spec:
       labels:
         app: zk
     spec:
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: "app"
-                    operator: In
-                    values: 
-                    - zk
-              topologyKey: "kubernetes.io/hostname"
+      nodeSelector:
+        zk: ""
+      tolerations:
+      - effect: NoSchedule
+        key: dedicated
+        operator: Equal
+        value: proxmox
+      hostNetwork: true
       containers:
       - name: kubernetes-zookeeper
         imagePullPolicy: Always
-        image: "gcr.io/google_containers/kubernetes-zookeeper:1.0-3.4.10"
+        image: "kvaps/zookeeper"
         resources:
           requests:
             memory: "4Gi"
             cpu: "2"
-        ports:
-        - containerPort: 2181
-          name: client
-        - containerPort: 2888
-          name: server
-        - containerPort: 3888
-          name: leader-election
         command:
         - sh
         - -c
         - "start-zookeeper \
           --servers=3 \
+          --server_1=node1 \
+          --server_2=node2 \
+          --server_3=node3 \
           --data_dir=/var/lib/zookeeper/data \
           --data_log_dir=/var/lib/zookeeper/data/log \
           --conf_dir=/opt/zookeeper/conf \
@@ -125,6 +78,6 @@ spec:
 
       volumes:
       - name: datadir
-        emptyDir: {}
-        #hostPath:
-        #  path: "/data/local/data/zookeeper"
+        #emptyDir: {}
+        hostPath:
+          path: "/data/local/data/zookeeper"
